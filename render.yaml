@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: domhunt
+    runtime: python
+    plan: free
+    buildCommand: pip install -e .
+    startCommand: domhunt-web
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.5
+    healthCheckPath: /healthz

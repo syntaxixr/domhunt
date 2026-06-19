@@ -33,3 +33,10 @@ jobs:
 
       - name: Test
         run: pytest -v
+
+      - name: Smoke-check web app boots
+        run: |
+          domhunt-web &
+          sleep 4
+          curl -fsS http://127.0.0.1:8000/healthz
+          curl -fsS "http://127.0.0.1:8000/api/check?name=example&tlds=com" > /dev/null

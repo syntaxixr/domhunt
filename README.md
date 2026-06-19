@@ -1,15 +1,29 @@
 # domhunt
 
-> Check domain name availability across many TLDs in one command — from your terminal.
+> Check domain name availability across many TLDs in one search — from your **browser** or your **terminal**.
 
 You have a project name in mind. You want to know if `acme.com`, `acme.io`,
-`acme.dev`, `acme.app`, `acme.ai`, `acme.co`, ... are taken. Opening Namecheap
-or GoDaddy and typing each one is slow. `domhunt` does it in one go.
+`acme.dev`, `acme.app`, `acme.ai`, ... are taken. Opening Namecheap or GoDaddy
+and typing each one is slow. `domhunt` does it in one go.
+
+## Two ways to use it
+
+### 1. Browser (no install)
+
+Open the hosted UI, type your name, hit Search. Free, no signup, no ads.
+
+> Self-host or use the public instance once deployed — see the
+> [Deploy](#deploy-your-own-free) section below.
+
+### 2. Terminal (one line)
+
+```bash
+pip install domhunt
+domhunt acme
+```
 
 ```text
-$ domhunt acme
-
-                domhunt — 'acme'
+           domhunt: 'acme'
 +-----------+----------------+------------------------+
 | Domain    | Status         | Detail                 |
 +-----------+----------------+------------------------+
@@ -34,17 +48,9 @@ $ domhunt acme
 
 - Hunting for a project name? You don't want to open 12 registrar tabs.
 - Existing online tools are slow, full of ads, or upsell you on premium plans.
-- This is just a tiny CLI: one query, one table, done.
+- This is just a tiny CLI **and** a single-page web UI — one query, one table, done.
 
-## Install
-
-```bash
-pip install domhunt
-```
-
-Requires Python 3.10+.
-
-## Usage
+## CLI usage
 
 ```bash
 # Default curated TLD set (12 developer-friendly TLDs)
@@ -56,38 +62,100 @@ domhunt acme --tlds com,io,dev,app
 # Extended set (~30 TLDs)
 domhunt acme --tlds all
 
-# Only print the available ones (useful in scripts)
+# Only print the ones that are available (useful in scripts)
 domhunt newco --tlds all --available-only
 ```
 
-| Flag                | Description                                       |
-| ------------------- | ------------------------------------------------- |
-| `--tlds`            | Comma-separated TLDs, or `all` for extended list. |
-| `-c, --concurrency` | Max parallel RDAP queries (default `10`).         |
-| `-a, --available-only` | Hide taken/unknown domains.                    |
-| `-h, --help`        | Show help.                                        |
-| `--version`         | Show version.                                     |
+| Flag                   | Description                                       |
+| ---------------------- | ------------------------------------------------- |
+| `--tlds`               | Comma-separated TLDs, or `all` for extended list. |
+| `-c, --concurrency`    | Max parallel RDAP queries (default `10`).         |
+| `-a, --available-only` | Hide taken/unknown domains.                       |
+| `-h, --help`           | Show help.                                        |
+| `--version`            | Show version.                                     |
+
+## Web UI
+
+Run the web app locally:
+
+```bash
+pip install domhunt
+domhunt-web
+# -> open http://localhost:8000
+```
+
+Or hit the JSON API directly:
+
+```bash
+curl "http://localhost:8000/api/check?name=acme&tlds=com,io,dev"
+```
+
+```json
+{
+  "name": "acme",
+  "results": [
+    { "domain": "acme.com", "status": "taken", "detail": "" },
+    { "domain": "acme.io",  "status": "taken", "detail": "" },
+    { "domain": "acme.dev", "status": "available", "detail": "" }
+  ]
+}
+```
+
+## Deploy your own (free)
+
+### Render (recommended — one click, no card required for the free tier)
+
+1. Push this repo to your GitHub.
+2. On <https://render.com>, click **New +** → **Blueprint** → connect your fork.
+3. Render reads `render.yaml` and provisions a free web service automatically.
+4. You get a public URL like `https://domhunt-xxxx.onrender.com`.
+
+### Docker (anywhere)
+
+```bash
+docker build -t domhunt .
+docker run -p 8000:8000 domhunt
+```
+
+Works on Fly.io, Railway, your VPS, etc.
 
 ## How it works
 
 `domhunt` queries the public [RDAP](https://datatracker.ietf.org/doc/html/rfc7480)
 gateway at <https://rdap.org/>. RDAP is the modern successor to WHOIS (defined
-by ICANN and adopted by all major registries) and returns clean JSON over HTTPS:
+by ICANN, adopted by all major registries) and returns clean JSON over HTTPS:
 
 - HTTP `404` → domain is **available**
 - HTTP `200` → domain is **taken**
-- HTTP `400` → that TLD doesn't expose an RDAP server (rare; falls back to `unknown`)
+- HTTP `400` → that TLD doesn't expose an RDAP server (rare; surfaced as `unknown`)
 
 Checks run concurrently with `asyncio` + `httpx`, so 30 TLDs take a couple of
 seconds, not 30.
 
+## Project layout
+
+```
+domhunt/
+├── src/domhunt/
+│   ├── cli.py           # Click-based CLI
+│   ├── checker.py       # async RDAP queries (the brain)
+│   ├── tlds.py          # curated TLD lists
+│   ├── web.py           # FastAPI app for the web UI / JSON API
+│   └── static/index.html
+├── tests/               # pytest + respx + FastAPI TestClient (16 tests)
+├── .github/workflows/   # CI on Python 3.10 / 3.11 / 3.12
+├── Dockerfile           # for any container host
+└── render.yaml          # one-click deploy on Render
+```
+
 ## Roadmap
 
-- [ ] Suggest creative variations (`acme-app`, `getacme`, `tryacme`, ...) when the input is taken everywhere.
+- [ ] Suggest creative variations (`get-acme`, `tryacme`, `acmehq`, ...) when the input is taken everywhere.
 - [ ] Optional WHOIS fallback for TLDs without an RDAP server.
-- [ ] JSON output (`--json`) for scripting.
+- [ ] JSON output for the CLI (`--json`).
 - [ ] Pre-baked TLD sets (`--preset startup`, `--preset web3`, ...).
 - [ ] Persistent cache to avoid re-querying within a short window.
+- [ ] Submit to PyPI.
 
 ## Development
 
@@ -95,10 +163,12 @@ seconds, not 30.
 git clone https://github.com/yourname/domhunt
 cd domhunt
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-pytest
+pytest                                # 16 tests
 ruff check .
+domhunt acme                          # try the CLI
+domhunt-web                           # try the web UI on :8000
 ```
 
 ## License

@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>domhunt — find your project domain in one search</title>
+    <meta
+      name="description"
+      content="Check if your project name is available across .com, .io, .dev, .app, .ai and more — all at once, free, no signup."
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='52'%3E%F0%9F%8F%B9%3C/text%3E%3C/svg%3E" />
+    <style>
+      :root {
+        --bg: #0e1116;
+        --panel: #161b22;
+        --border: #30363d;
+        --text: #e6edf3;
+        --muted: #8b949e;
+        --accent: #58a6ff;
+        --green: #3fb950;
+        --red: #f85149;
+        --yellow: #d29922;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.5;
+        min-height: 100vh;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 48px 20px 80px;
+      }
+      header { text-align: center; margin-bottom: 32px; }
+      h1 {
+        font-size: 2.4rem;
+        margin: 0 0 8px;
+        letter-spacing: -0.02em;
+      }
+      h1 span { color: var(--accent); }
+      .tagline { color: var(--muted); margin: 0; font-size: 1.05rem; }
+      form {
+        display: flex;
+        gap: 8px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 8px;
+        margin-bottom: 16px;
+      }
+      input[type="text"] {
+        flex: 1;
+        background: transparent;
+        border: 0;
+        color: var(--text);
+        font-size: 1.1rem;
+        padding: 12px 14px;
+        outline: none;
+      }
+      input[type="text"]::placeholder { color: var(--muted); }
+      button {
+        background: var(--accent);
+        color: #0e1116;
+        border: 0;
+        border-radius: 8px;
+        padding: 0 22px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: filter 0.15s;
+      }
+      button:hover:not(:disabled) { filter: brightness(1.1); }
+      button:disabled { opacity: 0.6; cursor: wait; }
+      .controls {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 32px;
+        flex-wrap: wrap;
+      }
+      .controls label { cursor: pointer; user-select: none; }
+      .controls input[type="checkbox"] { vertical-align: middle; margin-right: 4px; }
+      .controls select {
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 4px 8px;
+      }
+      #status {
+        text-align: center;
+        color: var(--muted);
+        min-height: 1.5em;
+        margin-bottom: 12px;
+      }
+      #summary {
+        text-align: center;
+        margin-bottom: 16px;
+        color: var(--muted);
+      }
+      #summary strong { color: var(--green); }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      th, td {
+        text-align: left;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.95rem;
+      }
+      th { background: #1c2128; color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+      tr:last-child td { border-bottom: 0; }
+      td.domain { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      td.status-available { color: var(--green); font-weight: 600; }
+      td.status-taken { color: var(--red); }
+      td.status-unknown { color: var(--yellow); }
+      td.detail { color: var(--muted); font-size: 0.85rem; }
+      .error { color: var(--red); text-align: center; padding: 12px; }
+      footer {
+        text-align: center;
+        margin-top: 64px;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      footer a { color: var(--accent); text-decoration: none; }
+      footer a:hover { text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>dom<span>hunt</span></h1>
+        <p class="tagline">Check your project name across every TLD that matters — in one search.</p>
+      </header>
+
+      <form id="form" autocomplete="off">
+        <input
+          id="name"
+          type="text"
+          placeholder="e.g. acme"
+          autofocus
+          required
+          pattern="[A-Za-z0-9-]+"
+          maxlength="63"
+        />
+        <button type="submit" id="submit">Search</button>
+      </form>
+
+      <div class="controls">
+        <label><input type="checkbox" id="availableOnly" /> Show only available</label>
+        <label>
+          TLD set:
+          <select id="tldset">
+            <option value="default" selected>Default (12)</option>
+            <option value="all">Extended (~30)</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="status"></div>
+      <div id="summary"></div>
+      <div id="results"></div>
+
+      <footer>
+        Free &amp; open source. No tracking, no ads, no signup.
+        &middot;
+        <a href="https://github.com/yourname/domhunt" target="_blank" rel="noopener">GitHub</a>
+        &middot;
+        <a href="https://pypi.org/project/domhunt/" target="_blank" rel="noopener">CLI on PyPI</a>
+      </footer>
+    </main>
+
+    <script>
+      const form = document.getElementById("form");
+      const nameInput = document.getElementById("name");
+      const tldSelect = document.getElementById("tldset");
+      const availableOnly = document.getElementById("availableOnly");
+      const submitBtn = document.getElementById("submit");
+      const statusEl = document.getElementById("status");
+      const summaryEl = document.getElementById("summary");
+      const resultsEl = document.getElementById("results");
+
+      function renderResults(data) {
+        const rows = availableOnly.checked
+          ? data.results.filter(r => r.status === "available")
+          : data.results;
+
+        const available = data.results.filter(r => r.status === "available").length;
+        summaryEl.innerHTML = `<strong>${available}</strong> available of <strong>${data.results.length}</strong> checked.`;
+
+        if (!rows.length) {
+          resultsEl.innerHTML = '<p class="error">Nothing to show.</p>';
+          return;
+        }
+
+        const labels = {
+          available: "available",
+          taken: "taken",
+          unknown: "unknown",
+        };
+        const html = `
+          <table>
+            <thead>
+              <tr><th>Domain</th><th>Status</th><th>Detail</th></tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => `
+                <tr>
+                  <td class="domain">${r.domain}</td>
+                  <td class="status-${r.status}">${labels[r.status] || r.status}</td>
+                  <td class="detail">${r.detail || ""}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        `;
+        resultsEl.innerHTML = html;
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = nameInput.value.trim().toLowerCase();
+        if (!name) return;
+
+        submitBtn.disabled = true;
+        statusEl.textContent = "Querying RDAP servers…";
+        summaryEl.textContent = "";
+        resultsEl.innerHTML = "";
+
+        const params = new URLSearchParams({ name });
+        if (tldSelect.value === "all") params.set("tlds", "all");
+
+        try {
+          const resp = await fetch(`/api/check?${params}`);
+          if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${resp.status}`);
+          }
+          const data = await resp.json();
+          statusEl.textContent = "";
+          renderResults(data);
+        } catch (err) {
+          statusEl.innerHTML = `<span class="error">${err.message}</span>`;
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+
+      availableOnly.addEventListener("change", () => {
+        // Re-render if we already have results
+        if (resultsEl.querySelector("table")) form.dispatchEvent(new Event("submit"));
+      });
+    </script>
+  </body>
+</html>
