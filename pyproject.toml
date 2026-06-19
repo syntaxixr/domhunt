@@ -47,9 +47,9 @@ domhunt = "domhunt.cli:main"
 domhunt-web = "domhunt.web:run"
 
 [project.urls]
-Homepage = "https://github.com/yourname/domhunt"
-Repository = "https://github.com/yourname/domhunt"
-Issues = "https://github.com/yourname/domhunt/issues"
+Homepage = "https://github.com/syntaxixr/domhunt"
+Repository = "https://github.com/syntaxixr/domhunt"
+Issues = "https://github.com/syntaxixr/domhunt/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/domhunt"]

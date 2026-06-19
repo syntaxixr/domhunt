@@ -10,7 +10,7 @@ and typing each one is slow. `domhunt` does it in one go.
 
 ### 1. Browser — no install, no signup, no server
 
-Live demo: **https://yourname.github.io/domhunt/**
+Live demo: **https://syntaxixr.github.io/domhunt/**
 
 The web UI is a single static HTML file. It calls `rdap.org` directly from
 your browser (CORS-enabled). No backend required — hosted free on **GitHub
@@ -181,7 +181,7 @@ domhunt/
 ## Development
 
 ```bash
-git clone https://github.com/yourname/domhunt
+git clone https://github.com/syntaxixr/domhunt
 cd domhunt
 python -m venv .venv
 source .venv/bin/activate            # Windows: .venv\Scripts\activate

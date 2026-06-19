@@ -70,7 +70,7 @@ async def check_many(
     """Check `name.<tld>` for every tld in `tlds`. Preserves input order."""
     domains = [f"{name}.{tld}" for tld in tlds]
     semaphore = asyncio.Semaphore(concurrency)
-    headers = {"User-Agent": "domhunt/0.1 (+https://github.com/yourname/domhunt)"}
+    headers = {"User-Agent": "domhunt/0.1 (+https://github.com/syntaxixr/domhunt)"}
     async with httpx.AsyncClient(headers=headers, follow_redirects=True) as client:
         tasks = [check_one(client, d, semaphore) for d in domains]
         return await asyncio.gather(*tasks)
