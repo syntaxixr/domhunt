@@ -8,12 +8,13 @@ and typing each one is slow. `domhunt` does it in one go.
 
 ## Two ways to use it
 
-### 1. Browser (no install)
+### 1. Browser — no install, no signup, no server
 
-Open the hosted UI, type your name, hit Search. Free, no signup, no ads.
+Live demo: **https://yourname.github.io/domhunt/**
 
-> Self-host or use the public instance once deployed — see the
-> [Deploy](#deploy-your-own-free) section below.
+The web UI is a single static HTML file. It calls `rdap.org` directly from
+your browser (CORS-enabled). No backend required — hosted free on **GitHub
+Pages** with auto-deploy on every push.
 
 ### 2. Terminal (one line)
 
@@ -103,12 +104,32 @@ curl "http://localhost:8000/api/check?name=acme&tlds=com,io,dev"
 
 ## Deploy your own (free)
 
-### Render (recommended — one click, no card required for the free tier)
+### GitHub Pages — **recommended, $0 forever, no server**
+
+The site in `docs/` is a single self-contained HTML file. It calls
+`https://rdap.org/` directly from the browser (rdap.org sends
+`Access-Control-Allow-Origin: *`, so no proxy is needed). That means:
+
+- **No backend.** No server to pay for, no cold starts.
+- **Auto-deploys** on every push via `.github/workflows/pages.yml`.
+
+Setup (one time):
 
 1. Push this repo to your GitHub.
-2. On <https://render.com>, click **New +** → **Blueprint** → connect your fork.
-3. Render reads `render.yaml` and provisions a free web service automatically.
-4. You get a public URL like `https://domhunt-xxxx.onrender.com`.
+2. Go to **Settings → Pages** in your repo.
+3. Set **Source** to **GitHub Actions**.
+4. Push to `main`. The workflow publishes `docs/` and prints the URL.
+
+Your site lives at `https://YOURNAME.github.io/domhunt/`.
+
+### Render — if you want the Python backend version
+
+The FastAPI app under `src/domhunt/web.py` is included for self-hosters who
+want to add caching, rate-limiting, or auth in front of RDAP.
+
+1. Push to GitHub.
+2. On <https://render.com>: **New +** → **Blueprint** → pick your repo.
+3. Render reads `render.yaml` and provisions a free web service.
 
 ### Docker (anywhere)
 
