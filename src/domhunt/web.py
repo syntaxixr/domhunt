@@ -96,7 +96,8 @@ async def api_suggest(
         {
             "name": name,
             "candidates": [
-                {"name": c, "results": _serialize(rs)} for c, rs in zip(candidates, chunks)
+                {"name": c, "results": _serialize(rs)}
+                for c, rs in zip(candidates, chunks, strict=True)
             ],
         }
     )

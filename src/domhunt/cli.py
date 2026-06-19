@@ -114,10 +114,9 @@ def main(
     visible = [r for r in results if r.status is Status.AVAILABLE] if available_only else results
 
     if visible:
-        available = _render(f"domhunt: '{name}'", visible)
+        _render(f"domhunt: '{name}'", visible)
     else:
         console.print("[yellow]No domains to show.[/yellow]")
-        available = 0
 
     total_available = sum(1 for r in results if r.status is Status.AVAILABLE)
     console.print(

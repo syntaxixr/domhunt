@@ -23,7 +23,8 @@ DEFAULT_TLDS: tuple[str, ...] = (
 )
 
 # Larger curated set, opt-in via --tlds all
-EXTENDED_TLDS: tuple[str, ...] = DEFAULT_TLDS + (
+EXTENDED_TLDS: tuple[str, ...] = (
+    *DEFAULT_TLDS,
     "tech",
     "tools",
     "studio",
