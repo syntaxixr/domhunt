@@ -8,6 +8,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import asyncio
 import re
 from pathlib import Path
 
@@ -17,7 +18,11 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from domhunt import __version__
 from domhunt.checker import check_many
+from domhunt.suggester import variations
 from domhunt.tlds import resolve_tlds
+
+_MAX_TLDS = 40
+_MAX_CANDIDATES = 12
 
 _STATIC_DIR = Path(__file__).parent / "static"
 _NAME_RE = re.compile(r"^(?!-)[a-z0-9-]{1,63}(?<!-)$")
@@ -41,24 +46,57 @@ async def healthz() -> dict[str, str]:
     return {"status": "ok", "version": __version__}
 
 
+def _validate_query(name: str, tlds: str | None) -> tuple[str, list[str]]:
+    name = name.strip().lower()
+    if not _NAME_RE.match(name):
+        raise HTTPException(status_code=400, detail="Invalid domain label.")
+    tld_list = resolve_tlds(tlds)
+    if len(tld_list) > _MAX_TLDS:
+        raise HTTPException(
+            status_code=400, detail=f"Too many TLDs (max {_MAX_TLDS} per request)."
+        )
+    return name, tld_list
+
+
+def _serialize(results) -> list[dict]:
+    return [
+        {
+            "domain": r.domain,
+            "status": r.status.value,
+            "detail": r.detail,
+            "price_usd": r.price_usd,
+            "buy_url": r.buy_url,
+        }
+        for r in results
+    ]
+
+
 @app.get("/api/check")
 async def api_check(
     name: str = Query(..., min_length=1, max_length=63),
     tlds: str | None = Query(None, description="Comma-separated TLDs or 'all'"),
 ) -> JSONResponse:
-    name = name.strip().lower()
-    if not _NAME_RE.match(name):
-        raise HTTPException(status_code=400, detail="Invalid domain label.")
-    tld_list = resolve_tlds(tlds)
-    if len(tld_list) > 40:
-        raise HTTPException(status_code=400, detail="Too many TLDs (max 40 per request).")
+    name, tld_list = _validate_query(name, tlds)
     results = await check_many(name, tld_list, concurrency=10)
+    return JSONResponse({"name": name, "results": _serialize(results)})
+
+
+@app.get("/api/suggest")
+async def api_suggest(
+    name: str = Query(..., min_length=1, max_length=63),
+    tlds: str | None = Query(None, description="Comma-separated TLDs or 'all'"),
+) -> JSONResponse:
+    """Generate creative variations and check each across the requested TLDs."""
+    name, tld_list = _validate_query(name, tlds)
+    candidates = variations(name, limit=_MAX_CANDIDATES)
+    chunks = await asyncio.gather(
+        *(check_many(c, tld_list, concurrency=10) for c in candidates)
+    )
     return JSONResponse(
         {
             "name": name,
-            "results": [
-                {"domain": r.domain, "status": r.status.value, "detail": r.detail}
-                for r in results
+            "candidates": [
+                {"name": c, "results": _serialize(rs)} for c, rs in zip(candidates, chunks)
             ],
         }
     )

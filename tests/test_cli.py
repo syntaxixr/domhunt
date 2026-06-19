@@ -45,6 +45,35 @@ def test_renders_table_for_valid_name(runner: CliRunner) -> None:
     assert "1 available" in result.output
 
 
+def test_runs_suggester_when_nothing_available(runner: CliRunner) -> None:
+    call_count = {"n": 0}
+
+    async def fake_check_many(name, tlds, concurrency=10):
+        call_count["n"] += 1
+        # First call: original name, everything taken.
+        # Subsequent calls: variations — first one has a free domain, rest taken.
+        if call_count["n"] == 1:
+            return [CheckResult(f"{name}.{t}", Status.TAKEN) for t in tlds]
+        if call_count["n"] == 2:
+            return [CheckResult(f"{name}.{tlds[0]}", Status.AVAILABLE)]
+        return [CheckResult(f"{name}.{tlds[0]}", Status.TAKEN)]
+
+    with patch("domhunt.cli.check_many", side_effect=fake_check_many):
+        result = runner.invoke(main, ["takenname", "--tlds", "com"])
+
+    assert "Try one of these instead" in result.output
+
+
+def test_no_suggest_flag_disables_suggester(runner: CliRunner) -> None:
+    async def fake_check_many(name, tlds, concurrency=10):
+        return [CheckResult(f"{name}.{t}", Status.TAKEN) for t in tlds]
+
+    with patch("domhunt.cli.check_many", side_effect=fake_check_many):
+        result = runner.invoke(main, ["takenname", "--tlds", "com", "--no-suggest"])
+
+    assert "Try one of these instead" not in result.output
+
+
 def test_available_only_filters(runner: CliRunner) -> None:
     fake = [
         CheckResult("demo.com", Status.TAKEN),

@@ -58,3 +58,35 @@ def test_api_check_rejects_too_many_tlds(client: TestClient) -> None:
     big_list = ",".join(f"t{i}" for i in range(50))
     resp = client.get("/api/check", params={"name": "demo", "tlds": big_list})
     assert resp.status_code == 400
+
+
+def test_api_check_includes_price_and_buy_url(client: TestClient) -> None:
+    fake = [CheckResult("demo.com", Status.AVAILABLE, "", price_usd=10.0, buy_url="x")]
+
+    async def fake_check_many(name, tlds, concurrency=10):
+        return fake
+
+    with patch("domhunt.web.check_many", side_effect=fake_check_many):
+        resp = client.get("/api/check", params={"name": "demo", "tlds": "com"})
+
+    assert resp.status_code == 200
+    row = resp.json()["results"][0]
+    assert row["price_usd"] == 10.0
+    assert row["buy_url"] == "x"
+
+
+def test_api_suggest_returns_candidates(client: TestClient) -> None:
+    async def fake_check_many(name, tlds, concurrency=10):
+        return [CheckResult(f"{name}.{tlds[0]}", Status.AVAILABLE)]
+
+    with patch("domhunt.web.check_many", side_effect=fake_check_many):
+        resp = client.get("/api/suggest", params={"name": "demo", "tlds": "com"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["name"] == "demo"
+    assert len(data["candidates"]) > 0
+    first = data["candidates"][0]
+    assert "name" in first
+    assert "results" in first
+    assert first["results"][0]["status"] == "available"

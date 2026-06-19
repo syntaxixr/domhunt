@@ -6,8 +6,14 @@
     <title>domhunt — find your project domain in one search</title>
     <meta
       name="description"
+      content="Check if your project name is available across .com, .io, .dev, .app, .ai and more — all at once, free, no signup, no install."
+    />
+    <meta property="og:title" content="domhunt — find your project domain in one search" />
+    <meta
+      property="og:description"
       content="Check if your project name is available across .com, .io, .dev, .app, .ai and more — all at once, free, no signup."
     />
+    <meta name="twitter:card" content="summary" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='52'%3E%F0%9F%8F%B9%3C/text%3E%3C/svg%3E" />
     <style>
       :root {
@@ -32,16 +38,12 @@
         min-height: 100vh;
       }
       main {
-        max-width: 760px;
+        max-width: 820px;
         margin: 0 auto;
         padding: 48px 20px 80px;
       }
       header { text-align: center; margin-bottom: 32px; }
-      h1 {
-        font-size: 2.4rem;
-        margin: 0 0 8px;
-        letter-spacing: -0.02em;
-      }
+      h1 { font-size: 2.4rem; margin: 0 0 8px; letter-spacing: -0.02em; }
       h1 span { color: var(--accent); }
       .tagline { color: var(--muted); margin: 0; font-size: 1.05rem; }
       form {
@@ -94,18 +96,17 @@
         border-radius: 6px;
         padding: 4px 8px;
       }
-      #status {
-        text-align: center;
-        color: var(--muted);
-        min-height: 1.5em;
-        margin-bottom: 12px;
-      }
-      #summary {
-        text-align: center;
-        margin-bottom: 16px;
-        color: var(--muted);
-      }
+      #status { text-align: center; color: var(--muted); min-height: 1.5em; margin-bottom: 12px; }
+      #summary { text-align: center; margin-bottom: 16px; color: var(--muted); }
       #summary strong { color: var(--green); }
+      .section-title {
+        margin: 36px 0 10px;
+        font-size: 1.1rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        font-weight: 600;
+      }
       table {
         width: 100%;
         border-collapse: collapse;
@@ -114,26 +115,28 @@
         border-radius: 12px;
         overflow: hidden;
       }
-      th, td {
-        text-align: left;
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--border);
-        font-size: 0.95rem;
-      }
+      th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
       th { background: #1c2128; color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
       tr:last-child td { border-bottom: 0; }
       td.domain { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
       td.status-available { color: var(--green); font-weight: 600; }
       td.status-taken { color: var(--red); }
       td.status-unknown { color: var(--yellow); }
-      td.detail { color: var(--muted); font-size: 0.85rem; }
-      .error { color: var(--red); text-align: center; padding: 12px; }
-      footer {
-        text-align: center;
-        margin-top: 64px;
-        color: var(--muted);
+      td.price { color: var(--muted); white-space: nowrap; }
+      td.buy a {
+        background: var(--accent);
+        color: #0e1116;
+        border-radius: 6px;
+        padding: 4px 10px;
         font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
       }
+      td.buy a:hover { filter: brightness(1.1); }
+      td.buy { text-align: right; }
+      .error { color: var(--red); text-align: center; padding: 12px; }
+      footer { text-align: center; margin-top: 64px; color: var(--muted); font-size: 0.85rem; }
       footer a { color: var(--accent); text-decoration: none; }
       footer a:hover { text-decoration: underline; }
     </style>
@@ -172,17 +175,61 @@
       <div id="status"></div>
       <div id="summary"></div>
       <div id="results"></div>
+      <div id="suggestions"></div>
 
       <footer>
-        Free &amp; open source. No tracking, no ads, no signup.
+        Free &amp; open source. No tracking, no ads, no signup. Prices are approximate Porkbun retail.
         &middot;
         <a href="https://github.com/syntaxixr/domhunt" target="_blank" rel="noopener">GitHub</a>
         &middot;
-        <a href="https://pypi.org/project/domhunt/" target="_blank" rel="noopener">CLI on PyPI</a>
+        <a href="https://github.com/syntaxixr/domhunt#cli-usage" target="_blank" rel="noopener">CLI version</a>
       </footer>
     </main>
 
     <script>
+      // Curated TLDs and approximate Porkbun retail prices (USD/year).
+      // Duplicated from src/domhunt/{tlds.py, prices.py} so this page is fully
+      // self-contained for static hosting on GitHub Pages.
+      const DEFAULT_TLDS = ["com","io","dev","app","ai","co","net","org","me","xyz","sh","fm"];
+      const EXTENDED_TLDS = DEFAULT_TLDS.concat([
+        "tech","tools","studio","design","blog","site","shop","store",
+        "online","cloud","page","link","click","info","biz","us","uk","eu","de","fr"
+      ]);
+      const PRICES = {
+        com: 10, net: 12, org: 11, io: 38, dev: 15, app: 14, ai: 70, co: 26,
+        me: 17, xyz: 2, sh: 80, fm: 110, tech: 5, tools: 22, studio: 21,
+        design: 35, blog: 21, site: 4, shop: 4, store: 5, online: 2, cloud: 9,
+        page: 8, link: 9, click: 6, info: 4, biz: 17, us: 9, uk: 8, eu: 9,
+        de: 7, fr: 9
+      };
+      const PREFIXES = ["get","try","use","my","the","go"];
+      const SUFFIXES = ["app","hq","hub","labs","io","ly"];
+      const RDAP_GATEWAY = "https://rdap.org/domain/";
+      const CONCURRENCY = 8;
+      const TIMEOUT_MS = 8000;
+
+      function priceFor(tld) {
+        return PRICES[tld] ?? null;
+      }
+      function porkbunUrl(domain) {
+        return `https://porkbun.com/checkout/search?q=${domain}`;
+      }
+      function variations(name, limit = 12) {
+        name = name.replace(/^-+|-+$/g, "").toLowerCase();
+        if (!name) return [];
+        const seen = new Set([name]);
+        const out = [];
+        const add = (c) => {
+          c = c.replace(/^-+|-+$/g, "");
+          if (c && !seen.has(c)) { seen.add(c); out.push(c); }
+        };
+        for (const s of SUFFIXES) add(name + s);
+        for (const s of SUFFIXES) add(name + "-" + s);
+        for (const p of PREFIXES) add(p + name);
+        for (const p of PREFIXES) add(p + "-" + name);
+        return out.slice(0, limit);
+      }
+
       const form = document.getElementById("form");
       const nameInput = document.getElementById("name");
       const tldSelect = document.getElementById("tldset");
@@ -191,66 +238,127 @@
       const statusEl = document.getElementById("status");
       const summaryEl = document.getElementById("summary");
       const resultsEl = document.getElementById("results");
+      const suggestionsEl = document.getElementById("suggestions");
 
-      function renderResults(data) {
-        const rows = availableOnly.checked
-          ? data.results.filter(r => r.status === "available")
-          : data.results;
+      let lastResults = null;
 
-        const available = data.results.filter(r => r.status === "available").length;
-        summaryEl.innerHTML = `<strong>${available}</strong> available of <strong>${data.results.length}</strong> checked.`;
+      function classify(status) {
+        if (status === 200) return { status: "taken", detail: "" };
+        if (status === 404) return { status: "available", detail: "" };
+        if (status === 400) return { status: "unknown", detail: "TLD has no RDAP server" };
+        return { status: "unknown", detail: `HTTP ${status}` };
+      }
 
-        if (!rows.length) {
-          resultsEl.innerHTML = '<p class="error">Nothing to show.</p>';
-          return;
+      async function checkOne(domain) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+        try {
+          const resp = await fetch(RDAP_GATEWAY + domain, {
+            method: "GET",
+            redirect: "follow",
+            signal: ctrl.signal,
+          });
+          const c = classify(resp.status);
+          const tld = domain.split(".").pop();
+          return { domain, ...c, price_usd: priceFor(tld), buy_url: porkbunUrl(domain) };
+        } catch (err) {
+          const reason = err.name === "AbortError" ? "timeout" : "network error";
+          const tld = domain.split(".").pop();
+          return { domain, status: "unknown", detail: reason, price_usd: priceFor(tld), buy_url: porkbunUrl(domain) };
+        } finally {
+          clearTimeout(timer);
         }
+      }
 
-        const labels = {
-          available: "available",
-          taken: "taken",
-          unknown: "unknown",
-        };
-        const html = `
+      // Bounded concurrency runner that preserves input order.
+      async function checkDomains(domains) {
+        const results = new Array(domains.length);
+        let next = 0;
+        async function worker() {
+          while (next < domains.length) {
+            const i = next++;
+            results[i] = await checkOne(domains[i]);
+          }
+        }
+        const workers = Array.from({ length: Math.min(CONCURRENCY, domains.length) }, worker);
+        await Promise.all(workers);
+        return results;
+      }
+
+      function buildTable(rows) {
+        const labels = { available: "available", taken: "taken", unknown: "unknown" };
+        return `
           <table>
             <thead>
-              <tr><th>Domain</th><th>Status</th><th>Detail</th></tr>
+              <tr>
+                <th>Domain</th>
+                <th>Status</th>
+                <th>Price</th>
+                <th></th>
+              </tr>
             </thead>
             <tbody>
               ${rows.map(r => `
                 <tr>
                   <td class="domain">${r.domain}</td>
                   <td class="status-${r.status}">${labels[r.status] || r.status}</td>
-                  <td class="detail">${r.detail || ""}</td>
+                  <td class="price">${r.price_usd != null ? "$" + r.price_usd + "/yr" : "—"}</td>
+                  <td class="buy">${
+                    r.status === "available"
+                      ? `<a href="${r.buy_url}" target="_blank" rel="noopener">Buy</a>`
+                      : ""
+                  }</td>
                 </tr>
               `).join("")}
             </tbody>
           </table>
         `;
-        resultsEl.innerHTML = html;
+      }
+
+      function render(name, results) {
+        const visible = availableOnly.checked
+          ? results.filter(r => r.status === "available")
+          : results;
+        const available = results.filter(r => r.status === "available").length;
+        summaryEl.innerHTML = `<strong>${available}</strong> available of <strong>${results.length}</strong> checked.`;
+        resultsEl.innerHTML = visible.length ? buildTable(visible) : "";
+        return available;
+      }
+
+      async function runSuggester(name, tlds) {
+        const candidates = variations(name, 12);
+        const domains = [];
+        for (const c of candidates) for (const t of tlds) domains.push(`${c}.${t}`);
+        suggestionsEl.innerHTML = `<div class="section-title">Searching variations…</div>`;
+        const all = await checkDomains(domains);
+        const available = all.filter(r => r.status === "available");
+        if (!available.length) {
+          suggestionsEl.innerHTML = `<div class="section-title">Try one of these instead</div><p class="error">Even the variations are all taken. Try a longer or more unusual name.</p>`;
+          return;
+        }
+        suggestionsEl.innerHTML = `<div class="section-title">Try one of these instead</div>` + buildTable(available);
       }
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const name = nameInput.value.trim().toLowerCase();
-        if (!name) return;
-
+        if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(name)) {
+          statusEl.innerHTML = '<span class="error">Use 1-63 letters, digits, or hyphens (no leading/trailing hyphen).</span>';
+          return;
+        }
+        const tlds = tldSelect.value === "all" ? EXTENDED_TLDS : DEFAULT_TLDS;
         submitBtn.disabled = true;
-        statusEl.textContent = "Querying RDAP servers…";
+        statusEl.textContent = `Querying ${tlds.length} TLDs…`;
         summaryEl.textContent = "";
         resultsEl.innerHTML = "";
-
-        const params = new URLSearchParams({ name });
-        if (tldSelect.value === "all") params.set("tlds", "all");
+        suggestionsEl.innerHTML = "";
 
         try {
-          const resp = await fetch(`/api/check?${params}`);
-          if (!resp.ok) {
-            const err = await resp.json().catch(() => ({}));
-            throw new Error(err.detail || `HTTP ${resp.status}`);
-          }
-          const data = await resp.json();
+          const results = await checkDomains(tlds.map(t => `${name}.${t}`));
+          lastResults = { name, results, tlds };
           statusEl.textContent = "";
-          renderResults(data);
+          const available = render(name, results);
+          if (available === 0) await runSuggester(name, tlds);
         } catch (err) {
           statusEl.innerHTML = `<span class="error">${err.message}</span>`;
         } finally {
@@ -259,8 +367,7 @@
       });
 
       availableOnly.addEventListener("change", () => {
-        // Re-render if we already have results
-        if (resultsEl.querySelector("table")) form.dispatchEvent(new Event("submit"));
+        if (lastResults) render(lastResults.name, lastResults.results);
       });
     </script>
   </body>

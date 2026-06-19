@@ -15,10 +15,12 @@ registries. This keeps the implementation tiny — no per-TLD whois adapters.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 import httpx
+
+from domhunt.prices import porkbun_url, price_for
 
 RDAP_GATEWAY = "https://rdap.org/domain/"
 DEFAULT_TIMEOUT = 8.0
@@ -36,6 +38,16 @@ class CheckResult:
     domain: str
     status: Status
     detail: str = ""
+    price_usd: float | None = field(default=None)
+    buy_url: str | None = field(default=None)
+
+
+def _enrich(result: CheckResult) -> CheckResult:
+    """Attach price + buy URL to a result based on its TLD."""
+    tld = result.domain.rsplit(".", 1)[-1]
+    result.price_usd = price_for(tld)
+    result.buy_url = porkbun_url(result.domain)
+    return result
 
 
 async def check_one(
@@ -48,18 +60,18 @@ async def check_one(
         try:
             resp = await client.get(RDAP_GATEWAY + domain, timeout=DEFAULT_TIMEOUT)
         except httpx.TimeoutException:
-            return CheckResult(domain, Status.UNKNOWN, "timeout")
+            return _enrich(CheckResult(domain, Status.UNKNOWN, "timeout"))
         except httpx.HTTPError as exc:
-            return CheckResult(domain, Status.UNKNOWN, f"http error: {exc}")
+            return _enrich(CheckResult(domain, Status.UNKNOWN, f"http error: {exc}"))
 
     if resp.status_code == 200:
-        return CheckResult(domain, Status.TAKEN)
+        return _enrich(CheckResult(domain, Status.TAKEN))
     if resp.status_code == 404:
-        return CheckResult(domain, Status.AVAILABLE)
+        return _enrich(CheckResult(domain, Status.AVAILABLE))
     # rdap.org returns 400 for TLDs without RDAP support — surface that clearly.
     if resp.status_code == 400:
-        return CheckResult(domain, Status.UNKNOWN, "TLD has no RDAP server")
-    return CheckResult(domain, Status.UNKNOWN, f"HTTP {resp.status_code}")
+        return _enrich(CheckResult(domain, Status.UNKNOWN, "TLD has no RDAP server"))
+    return _enrich(CheckResult(domain, Status.UNKNOWN, f"HTTP {resp.status_code}"))
 
 
 async def check_many(

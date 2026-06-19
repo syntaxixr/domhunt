@@ -38,16 +38,12 @@
         min-height: 100vh;
       }
       main {
-        max-width: 760px;
+        max-width: 820px;
         margin: 0 auto;
         padding: 48px 20px 80px;
       }
       header { text-align: center; margin-bottom: 32px; }
-      h1 {
-        font-size: 2.4rem;
-        margin: 0 0 8px;
-        letter-spacing: -0.02em;
-      }
+      h1 { font-size: 2.4rem; margin: 0 0 8px; letter-spacing: -0.02em; }
       h1 span { color: var(--accent); }
       .tagline { color: var(--muted); margin: 0; font-size: 1.05rem; }
       form {
@@ -100,18 +96,17 @@
         border-radius: 6px;
         padding: 4px 8px;
       }
-      #status {
-        text-align: center;
-        color: var(--muted);
-        min-height: 1.5em;
-        margin-bottom: 12px;
-      }
-      #summary {
-        text-align: center;
-        margin-bottom: 16px;
-        color: var(--muted);
-      }
+      #status { text-align: center; color: var(--muted); min-height: 1.5em; margin-bottom: 12px; }
+      #summary { text-align: center; margin-bottom: 16px; color: var(--muted); }
       #summary strong { color: var(--green); }
+      .section-title {
+        margin: 36px 0 10px;
+        font-size: 1.1rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        font-weight: 600;
+      }
       table {
         width: 100%;
         border-collapse: collapse;
@@ -120,26 +115,28 @@
         border-radius: 12px;
         overflow: hidden;
       }
-      th, td {
-        text-align: left;
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--border);
-        font-size: 0.95rem;
-      }
+      th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
       th { background: #1c2128; color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
       tr:last-child td { border-bottom: 0; }
       td.domain { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
       td.status-available { color: var(--green); font-weight: 600; }
       td.status-taken { color: var(--red); }
       td.status-unknown { color: var(--yellow); }
-      td.detail { color: var(--muted); font-size: 0.85rem; }
-      .error { color: var(--red); text-align: center; padding: 12px; }
-      footer {
-        text-align: center;
-        margin-top: 64px;
-        color: var(--muted);
+      td.price { color: var(--muted); white-space: nowrap; }
+      td.buy a {
+        background: var(--accent);
+        color: #0e1116;
+        border-radius: 6px;
+        padding: 4px 10px;
         font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
       }
+      td.buy a:hover { filter: brightness(1.1); }
+      td.buy { text-align: right; }
+      .error { color: var(--red); text-align: center; padding: 12px; }
+      footer { text-align: center; margin-top: 64px; color: var(--muted); font-size: 0.85rem; }
       footer a { color: var(--accent); text-decoration: none; }
       footer a:hover { text-decoration: underline; }
     </style>
@@ -178,9 +175,10 @@
       <div id="status"></div>
       <div id="summary"></div>
       <div id="results"></div>
+      <div id="suggestions"></div>
 
       <footer>
-        Free &amp; open source. No tracking, no ads, no signup.
+        Free &amp; open source. No tracking, no ads, no signup. Prices are approximate Porkbun retail.
         &middot;
         <a href="https://github.com/syntaxixr/domhunt" target="_blank" rel="noopener">GitHub</a>
         &middot;
@@ -189,16 +187,48 @@
     </main>
 
     <script>
-      // TLDs are duplicated from src/domhunt/tlds.py so the page can run
-      // entirely client-side from any static host (GitHub Pages, Netlify, etc.).
+      // Curated TLDs and approximate Porkbun retail prices (USD/year).
+      // Duplicated from src/domhunt/{tlds.py, prices.py} so this page is fully
+      // self-contained for static hosting on GitHub Pages.
       const DEFAULT_TLDS = ["com","io","dev","app","ai","co","net","org","me","xyz","sh","fm"];
       const EXTENDED_TLDS = DEFAULT_TLDS.concat([
         "tech","tools","studio","design","blog","site","shop","store",
         "online","cloud","page","link","click","info","biz","us","uk","eu","de","fr"
       ]);
+      const PRICES = {
+        com: 10, net: 12, org: 11, io: 38, dev: 15, app: 14, ai: 70, co: 26,
+        me: 17, xyz: 2, sh: 80, fm: 110, tech: 5, tools: 22, studio: 21,
+        design: 35, blog: 21, site: 4, shop: 4, store: 5, online: 2, cloud: 9,
+        page: 8, link: 9, click: 6, info: 4, biz: 17, us: 9, uk: 8, eu: 9,
+        de: 7, fr: 9
+      };
+      const PREFIXES = ["get","try","use","my","the","go"];
+      const SUFFIXES = ["app","hq","hub","labs","io","ly"];
       const RDAP_GATEWAY = "https://rdap.org/domain/";
       const CONCURRENCY = 8;
       const TIMEOUT_MS = 8000;
+
+      function priceFor(tld) {
+        return PRICES[tld] ?? null;
+      }
+      function porkbunUrl(domain) {
+        return `https://porkbun.com/checkout/search?q=${domain}`;
+      }
+      function variations(name, limit = 12) {
+        name = name.replace(/^-+|-+$/g, "").toLowerCase();
+        if (!name) return [];
+        const seen = new Set([name]);
+        const out = [];
+        const add = (c) => {
+          c = c.replace(/^-+|-+$/g, "");
+          if (c && !seen.has(c)) { seen.add(c); out.push(c); }
+        };
+        for (const s of SUFFIXES) add(name + s);
+        for (const s of SUFFIXES) add(name + "-" + s);
+        for (const p of PREFIXES) add(p + name);
+        for (const p of PREFIXES) add(p + "-" + name);
+        return out.slice(0, limit);
+      }
 
       const form = document.getElementById("form");
       const nameInput = document.getElementById("name");
@@ -208,6 +238,7 @@
       const statusEl = document.getElementById("status");
       const summaryEl = document.getElementById("summary");
       const resultsEl = document.getElementById("results");
+      const suggestionsEl = document.getElementById("suggestions");
 
       let lastResults = null;
 
@@ -227,61 +258,85 @@
             redirect: "follow",
             signal: ctrl.signal,
           });
-          return { domain, ...classify(resp.status) };
+          const c = classify(resp.status);
+          const tld = domain.split(".").pop();
+          return { domain, ...c, price_usd: priceFor(tld), buy_url: porkbunUrl(domain) };
         } catch (err) {
           const reason = err.name === "AbortError" ? "timeout" : "network error";
-          return { domain, status: "unknown", detail: reason };
+          const tld = domain.split(".").pop();
+          return { domain, status: "unknown", detail: reason, price_usd: priceFor(tld), buy_url: porkbunUrl(domain) };
         } finally {
           clearTimeout(timer);
         }
       }
 
-      // Run checks concurrently with a bound; preserve input order.
-      async function checkMany(name, tlds) {
-        const domains = tlds.map(t => `${name}.${t}`);
+      // Bounded concurrency runner that preserves input order.
+      async function checkDomains(domains) {
         const results = new Array(domains.length);
         let next = 0;
-
         async function worker() {
           while (next < domains.length) {
             const i = next++;
             results[i] = await checkOne(domains[i]);
           }
         }
-
         const workers = Array.from({ length: Math.min(CONCURRENCY, domains.length) }, worker);
         await Promise.all(workers);
         return results;
       }
 
-      function render(name, results) {
-        const filtered = availableOnly.checked
-          ? results.filter(r => r.status === "available")
-          : results;
-
-        const available = results.filter(r => r.status === "available").length;
-        summaryEl.innerHTML = `<strong>${available}</strong> available of <strong>${results.length}</strong> checked.`;
-
-        if (!filtered.length) {
-          resultsEl.innerHTML = "";
-          return;
-        }
-
+      function buildTable(rows) {
         const labels = { available: "available", taken: "taken", unknown: "unknown" };
-        resultsEl.innerHTML = `
+        return `
           <table>
-            <thead><tr><th>Domain</th><th>Status</th><th>Detail</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Domain</th>
+                <th>Status</th>
+                <th>Price</th>
+                <th></th>
+              </tr>
+            </thead>
             <tbody>
-              ${filtered.map(r => `
+              ${rows.map(r => `
                 <tr>
                   <td class="domain">${r.domain}</td>
                   <td class="status-${r.status}">${labels[r.status] || r.status}</td>
-                  <td class="detail">${r.detail || ""}</td>
+                  <td class="price">${r.price_usd != null ? "$" + r.price_usd + "/yr" : "—"}</td>
+                  <td class="buy">${
+                    r.status === "available"
+                      ? `<a href="${r.buy_url}" target="_blank" rel="noopener">Buy</a>`
+                      : ""
+                  }</td>
                 </tr>
               `).join("")}
             </tbody>
           </table>
         `;
+      }
+
+      function render(name, results) {
+        const visible = availableOnly.checked
+          ? results.filter(r => r.status === "available")
+          : results;
+        const available = results.filter(r => r.status === "available").length;
+        summaryEl.innerHTML = `<strong>${available}</strong> available of <strong>${results.length}</strong> checked.`;
+        resultsEl.innerHTML = visible.length ? buildTable(visible) : "";
+        return available;
+      }
+
+      async function runSuggester(name, tlds) {
+        const candidates = variations(name, 12);
+        const domains = [];
+        for (const c of candidates) for (const t of tlds) domains.push(`${c}.${t}`);
+        suggestionsEl.innerHTML = `<div class="section-title">Searching variations…</div>`;
+        const all = await checkDomains(domains);
+        const available = all.filter(r => r.status === "available");
+        if (!available.length) {
+          suggestionsEl.innerHTML = `<div class="section-title">Try one of these instead</div><p class="error">Even the variations are all taken. Try a longer or more unusual name.</p>`;
+          return;
+        }
+        suggestionsEl.innerHTML = `<div class="section-title">Try one of these instead</div>` + buildTable(available);
       }
 
       form.addEventListener("submit", async (e) => {
@@ -291,17 +346,19 @@
           statusEl.innerHTML = '<span class="error">Use 1-63 letters, digits, or hyphens (no leading/trailing hyphen).</span>';
           return;
         }
-
         const tlds = tldSelect.value === "all" ? EXTENDED_TLDS : DEFAULT_TLDS;
         submitBtn.disabled = true;
         statusEl.textContent = `Querying ${tlds.length} TLDs…`;
         summaryEl.textContent = "";
         resultsEl.innerHTML = "";
+        suggestionsEl.innerHTML = "";
 
         try {
-          lastResults = { name, results: await checkMany(name, tlds) };
+          const results = await checkDomains(tlds.map(t => `${name}.${t}`));
+          lastResults = { name, results, tlds };
           statusEl.textContent = "";
-          render(name, lastResults.results);
+          const available = render(name, results);
+          if (available === 0) await runSuggester(name, tlds);
         } catch (err) {
           statusEl.innerHTML = `<span class="error">${err.message}</span>`;
         } finally {
