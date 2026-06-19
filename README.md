@@ -169,14 +169,6 @@ domhunt/
 └── render.yaml          # one-click deploy on Render
 ```
 
-## Roadmap
-
-- [ ] Suggest creative variations (`get-acme`, `tryacme`, `acmehq`, ...) when the input is taken everywhere.
-- [ ] Optional WHOIS fallback for TLDs without an RDAP server.
-- [ ] JSON output for the CLI (`--json`).
-- [ ] Pre-baked TLD sets (`--preset startup`, `--preset web3`, ...).
-- [ ] Persistent cache to avoid re-querying within a short window.
-- [ ] Submit to PyPI.
 
 ## Development
 
